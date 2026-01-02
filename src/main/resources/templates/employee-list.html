@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Employee List</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-dark text-light">
+    <nav class="navbar navbar-dark bg-black p-3">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1 text-warning">Employee Management</span>
+            <div>
+                <a href="/admin/dashboard" class="btn btn-outline-warning btn-sm">Back to Dashboard</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container mt-4">
+        <div class="card bg-black shadow">
+            <div class="card-header bg-dark">
+                <h4 class="text-warning mb-0">All Employees</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover">
+                        <thead>
+                            <tr>
+                                <th>Employee ID</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Department</th>
+                                <th>Designation</th>
+                                <th>Status</th>
+                                <th>Check-In Time</th>
+                                <th>Hours Today</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:if="${employees.isEmpty()}">
+                                <td colspan="8" class="text-center text-secondary">No employees found</td>
+                            </tr>
+                            <tr th:each="emp : ${employees}">
+                                <td th:text="${emp.employeeId}"></td>
+                                <td th:text="${emp.name}"></td>
+                                <td th:text="${emp.email}"></td>
+                                <td th:text="${emp.department}"></td>
+                                <td th:text="${emp.designation != null ? emp.designation : 'N/A'}"></td>
+                                <td>
+                                    <span th:if="${emp.status == 'IN'}" class="badge bg-success" th:text="${emp.status}"></span>
+                                    <span th:if="${emp.status == 'OUT'}" class="badge bg-secondary" th:text="${emp.status}"></span>
+                                </td>
+                                <td th:text="${emp.currentCheckIn != null ? #temporals.format(emp.currentCheckIn, 'HH:mm') : 'N/A'}"></td>
+                                <td>
+                                    <span class="badge bg-info" th:text="${emp.totalHoursToday != null ? #numbers.formatDecimal(emp.totalHoursToday, 1, 1) + 'h' : '0h'}"></span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

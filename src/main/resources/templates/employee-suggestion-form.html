@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogSphere - Submit Suggestion</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-dark text-light">
+    <nav class="navbar navbar-dark bg-black p-3">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1 text-warning">LogSphere</span>
+            <div>
+                <a href="/employee/dashboard" class="text-light text-decoration-none me-3">Dashboard</a>
+                <a href="/employee/suggestion/my-suggestions" class="text-light text-decoration-none me-3">My Suggestions</a>
+                <a href="/employee/logout" class="btn btn-outline-danger btn-sm">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h2 class="text-warning mb-4">💡 Submit Your Suggestion</h2>
+        
+        <!-- Success/Error Messages -->
+        <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <span th:text="${success}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <span th:text="${error}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card bg-black shadow">
+                    <div class="card-header bg-dark">
+                        <h4 class="text-warning mb-0">New Suggestion</h4>
+                    </div>
+                    <div class="card-body">
+                        <form th:action="@{/employee/suggestion/submit}" method="post">
+                            <div class="mb-3">
+                                <label for="suggestionType" class="form-label text-warning">Suggestion Type</label>
+                                <select class="form-select bg-dark text-light" id="suggestionType" name="suggestionType" required>
+                                    <option value="GENERAL">General</option>
+                                    <option value="HR">HR Related</option>
+                                    <option value="MANAGER">Manager Related</option>
+                                    <option value="COMPANY_POLICY">Company Policy</option>
+                                    <option value="FACILITIES">Facilities/Infrastructure</option>
+                                    <option value="OTHER">Other</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="title" class="form-label text-warning">Title <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control bg-dark text-light" id="title" name="title" required placeholder="Enter a brief title for your suggestion">
+                            </div>
+                            <div class="mb-3">
+                                <label for="description" class="form-label text-warning">Description <span class="text-danger">*</span></label>
+                                <textarea class="form-control bg-dark text-light" id="description" name="description" rows="6" required placeholder="Describe your suggestion in detail..."></textarea>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-warning">Submit Suggestion</button>
+                                <a href="/employee/dashboard" class="btn btn-outline-secondary">Cancel</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-black shadow">
+                    <div class="card-header bg-dark">
+                        <h5 class="text-warning mb-0">My Recent Suggestions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div th:if="${mySuggestions == null || mySuggestions.isEmpty()}" class="text-secondary">
+                            <p>No suggestions submitted yet.</p>
+                        </div>
+                        <div th:if="${mySuggestions != null && !mySuggestions.isEmpty()}">
+                            <div th:each="suggestion : ${mySuggestions}" class="mb-3 p-2 bg-dark rounded">
+                                <h6 class="text-warning" th:text="${suggestion.title}">Title</h6>
+                                <p class="text-secondary small mb-1" th:text="${suggestion.description.length() > 50 ? suggestion.description.substring(0, 50) + '...' : suggestion.description}">Description</p>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="badge" 
+                                          th:classappend="${suggestion.status == 'PENDING' ? 'bg-warning' : (suggestion.status == 'REVIEWED' ? 'bg-info' : (suggestion.status == 'IMPLEMENTED' ? 'bg-success' : 'bg-secondary'))}"
+                                          th:text="${suggestion.status}">PENDING</span>
+                                    <small class="text-muted" th:text="${#temporals.format(suggestion.createdAt, 'MMM dd, yyyy')}">Date</small>
+                                </div>
+                            </div>
+                            <a href="/employee/suggestion/my-suggestions" class="btn btn-outline-info btn-sm w-100">View All</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Create Meeting</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <style>
+        .form-label {
+            color: #ffc107 !important;
+            font-weight: 600;
+            font-size: 15px;
+            margin-bottom: 8px;
+            display: block;
+        }
+        .field-label {
+            color: #ffc107;
+            font-weight: 600;
+        }
+        .field-value {
+            color: #ffffff;
+            font-weight: 400;
+        }
+        .form-control, .form-select {
+            color: #ffffff !important;
+            background-color: #000000 !important;
+            border: 1px solid #444444;
+        }
+        .form-control:focus, .form-select:focus {
+            color: #ffffff !important;
+            background-color: #000000 !important;
+            border-color: #ffc107;
+            box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25);
+        }
+    </style>
+</head>
+<body class="bg-dark text-light">
+    <nav class="navbar navbar-dark bg-black p-3">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1 text-warning">Create Meeting</span>
+            <div>
+                <a th:href="${redirectUrl}" class="btn btn-outline-warning btn-sm">Back to Dashboard</a>
+            </div>
+        </div>
+    </nav>
+    <div class="container mt-4">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card bg-black shadow-lg">
+                    <div class="card-header bg-dark">
+                        <h4 class="text-warning mb-0">Schedule New Meeting</h4>
+                    </div>
+                    <div class="card-body">
+                        <form th:action="@{/meetings/create}" th:object="${meeting}" method="post">
+                            <div class="mb-3">
+                                <label class="form-label">Meeting Title <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control bg-dark text-light" th:field="*{title}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Description</label>
+                                <textarea class="form-control bg-dark text-light" th:field="*{description}" rows="3"></textarea>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Organizer (Employee)</label>
+                                    <select class="form-select bg-dark text-light" name="organizerId">
+                                        <option value="">Select Employee</option>
+                                        <option th:each="emp : ${employees}" th:value="${emp.id}" th:text="${emp.name}"></option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Visitor (if applicable) <span class="text-info">*Registered Visitors</span></label>
+                                    <select class="form-select bg-dark text-light" name="visitorId">
+                                        <option value="">Select Visitor (Optional)</option>
+                                        <option th:each="visitor : ${visitors}" 
+                                                th:value="${visitor.id}" 
+                                                th:text="${visitor.name + ' - ' + visitor.company + ' (' + visitor.status + ')'}"></option>
+                                    </select>
+                                    <small class="text-secondary">Shows all registered visitors (Registered, Checked In, Pending Approval)</small>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Start Time <span class="text-danger">*</span></label>
+                                    <input type="datetime-local" class="form-control bg-dark text-light" th:field="*{startTime}" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">End Time</label>
+                                    <input type="datetime-local" class="form-control bg-dark text-light" th:field="*{endTime}">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Location</label>
+                                    <input type="text" class="form-control bg-dark text-light" th:field="*{location}" placeholder="Meeting room or location">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Meeting Type</label>
+                                    <select class="form-select bg-dark text-light" th:field="*{meetingType}">
+                                        <option value="">Select Type</option>
+                                        <option value="INTERNAL">Internal</option>
+                                        <option value="EXTERNAL">External</option>
+                                        <option value="CLIENT">Client Meeting</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-warning btn-lg">Create Meeting</button>
+                                <a th:href="${redirectUrl}" class="btn btn-outline-secondary">Cancel</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

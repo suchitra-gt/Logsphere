@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogSphere - Leave History</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-dark text-light">
+    <nav class="navbar navbar-dark bg-black p-3">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1 text-warning">LogSphere</span>
+            <div>
+                <a href="/employee/dashboard" class="text-light text-decoration-none me-3">Dashboard</a>
+                <a href="/employee/leave/apply" class="text-light text-decoration-none me-3">Apply Leave</a>
+                <a href="/employee/logout" class="btn btn-outline-danger btn-sm">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card bg-black shadow">
+                    <div class="card-header bg-dark d-flex justify-content-between align-items-center">
+                        <h3 class="text-warning mb-0">📅 My Leave History</h3>
+                        <a href="/employee/leave/apply" class="btn btn-warning btn-sm">+ Apply for Leave</a>
+                    </div>
+                    <div class="card-body">
+                        <!-- Leave Balance Info -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <div class="card bg-dark">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-secondary">Leave Balance</h6>
+                                        <h2 class="text-info" th:text="${leaveBalance != null ? leaveBalance : 0}">0</h2>
+                                        <small class="text-muted">Days Remaining</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-dark">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-secondary">Pending</h6>
+                                        <h2 class="text-warning" th:text="${pendingLeaves != null ? pendingLeaves.size() : 0}">0</h2>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-dark">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-secondary">Approved</h6>
+                                        <h2 class="text-success" th:text="${approvedLeaves != null ? approvedLeaves.size() : 0}">0</h2>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Leave Requests Table -->
+                        <div class="table-responsive">
+                            <table class="table table-dark table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Leave Type</th>
+                                        <th>Start Date</th>
+                                        <th>End Date</th>
+                                        <th>Days</th>
+                                        <th>Status</th>
+                                        <th>Reason</th>
+                                        <th>Applied On</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:if="${leaveRequests == null || leaveRequests.isEmpty()}">
+                                        <td colspan="7" class="text-center text-secondary">No leave requests found. <a href="/employee/leave/apply" class="text-warning">Apply for leave</a></td>
+                                    </tr>
+                                    <tr th:each="leave : ${leaveRequests}">
+                                        <td><span class="badge bg-info" th:text="${leave.leaveType}"></span></td>
+                                        <td th:text="${#temporals.format(leave.startDate, 'yyyy-MM-dd')}"></td>
+                                        <td th:text="${#temporals.format(leave.endDate, 'yyyy-MM-dd')}"></td>
+                                        <td th:text="${leave.numberOfDays}"></td>
+                                        <td>
+                                            <span class="badge" th:classappend="${leave.status == 'APPROVED' ? 'bg-success' : (leave.status == 'REJECTED' ? 'bg-danger' : 'bg-warning')}" th:text="${leave.status}"></span>
+                                        </td>
+                                        <td th:text="${leave.reason != null ? leave.reason : 'N/A'}"></td>
+                                        <td th:text="${leave.createdAt != null ? #temporals.format(leave.createdAt, 'yyyy-MM-dd HH:mm') : 'N/A'}"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+

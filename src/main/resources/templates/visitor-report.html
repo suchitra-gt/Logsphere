@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Visitor Flow Report</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-dark text-light">
+    <nav class="navbar navbar-dark bg-black p-3">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1 text-warning">Visitor Flow Report</span>
+            <a href="/reports" class="btn btn-outline-warning btn-sm">Back to Reports</a>
+        </div>
+    </nav>
+    <div class="container mt-4">
+        <div class="card bg-black shadow mb-4">
+            <div class="card-header bg-dark">
+                <h4 class="text-warning">Report Period: 
+                    <span th:text="${startDate} + ' to ' + ${endDate}"></span>
+                </h4>
+            </div>
+        </div>
+
+        <div class="card bg-black shadow mb-4">
+            <div class="card-header bg-dark">
+                <h5 class="text-warning">Daily Visitor Flow</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-dark">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Number of Visitors</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="entry : ${visitorFlow}">
+                                <td th:text="${entry.key}"></td>
+                                <td><span class="badge bg-warning" th:text="${entry.value}"></span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card bg-black shadow">
+            <div class="card-header bg-dark">
+                <h5 class="text-warning">Visitor Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Company</th>
+                                <th>Purpose</th>
+                                <th>Person to Meet</th>
+                                <th>Check-In</th>
+                                <th>Check-Out</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="visitor : ${visitors}">
+                                <td th:text="${visitor.name}"></td>
+                                <td th:text="${visitor.company}"></td>
+                                <td th:text="${visitor.purpose}"></td>
+                                <td th:text="${visitor.personToMeet}"></td>
+                                <td th:text="${#temporals.format(visitor.checkInTime, 'yyyy-MM-dd HH:mm')}"></td>
+                                <td th:text="${visitor.checkOutTime != null ? #temporals.format(visitor.checkOutTime, 'yyyy-MM-dd HH:mm') : 'N/A'}"></td>
+                                <td>
+                                    <span th:if="${visitor.status == 'Registered'}" class="badge bg-info" th:text="${visitor.status}"></span>
+                                    <span th:if="${visitor.status == 'Checked In'}" class="badge bg-success" th:text="${visitor.status}"></span>
+                                    <span th:if="${visitor.status == 'Checked Out'}" class="badge bg-secondary" th:text="${visitor.status}"></span>
+                                    <span th:if="${visitor.status == 'Pending Approval'}" class="badge bg-warning" th:text="${visitor.status}"></span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

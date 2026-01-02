@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogSphere - Employee Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <style>
+        .status-badge {
+            font-size: 1.2rem;
+            padding: 10px 20px;
+        }
+    </style>
+</head>
+<body class="bg-dark text-light">
+    <nav class="navbar navbar-dark bg-black p-3">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1 text-warning">LogSphere</span>
+            <div>
+                <a href="/employee/tasks" class="text-light text-decoration-none me-3">📋 My Tasks</a>
+                <a href="/employee/qrcode" class="text-light text-decoration-none me-3">📱 My QR Code</a>
+                <a href="/employee/attendance/history" class="text-light text-decoration-none me-3">My Attendance</a>
+                <a href="/employee/leave/apply" class="text-light text-decoration-none me-3">📅 Apply Leave</a>
+                <a href="/employee/leave/history" class="text-light text-decoration-none me-3">Leave History</a>
+                <a href="/meetings/create" class="text-light text-decoration-none me-3">📅 Create Meeting</a>
+                <a href="/employee/suggestion/submit" class="text-light text-decoration-none me-3">💡 Submit Suggestion</a>
+                <a href="/employee/approvals" class="text-light text-decoration-none me-3">
+                    Visitor Approvals 
+                    <span th:if="${pendingCount > 0}" class="badge bg-danger" th:text="${pendingCount}"></span>
+                </a>
+                <a href="/employee/logout" class="btn btn-outline-danger btn-sm">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h2 class="text-warning mb-4">Welcome, <span th:text="${employee.name}">Employee</span></h2>
+        
+        <!-- Success/Error Messages -->
+        <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <span th:text="${success}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <span th:text="${error}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${warning}" class="alert alert-warning alert-dismissible fade show" role="alert">
+            <span th:text="${warning}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <div th:if="${info}" class="alert alert-info alert-dismissible fade show" role="alert">
+            <span th:text="${info}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <!-- Effort Score Display -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card bg-black shadow">
+                    <div class="card-body text-center">
+                        <h5 class="text-muted">Effort Score</h5>
+                        <h2 class="text-warning" th:text="${employee.effortScore != null ? #numbers.formatDecimal(employee.effortScore, 1, 1) : '100.0'}">100.0</h2>
+                        <small class="text-muted" th:if="${employee.consistentDays != null && employee.consistentDays > 0}">
+                            <span th:text="${employee.consistentDays}"></span> days consistent
+                        </small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-black shadow">
+                    <div class="card-body text-center">
+                        <h5 class="text-muted">Leave Balance</h5>
+                        <h2 class="text-info" th:text="${leaveBalance != null ? leaveBalance : 0}">0</h2>
+                        <small class="text-muted">Days Remaining</small>
+                        <div class="mt-2">
+                            <a href="/employee/leave/apply" class="btn btn-warning btn-sm w-100 mb-2">Apply Leave</a>
+                            <a href="/employee/leave/history" class="btn btn-info btn-sm w-100">Leave History</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card bg-black shadow">
+                    <div class="card-body text-center">
+                        <h5 class="text-muted">Activity Status</h5>
+                        <p class="text-light" th:if="${employee.lastActivityTime != null}">
+                            Last Active: <span th:text="${#temporals.format(employee.lastActivityTime, 'HH:mm')}"></span>
+                        </p>
+                        <p class="text-muted" th:if="${employee.lastActivityTime == null}">No activity recorded</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Today's Status -->
+            <div class="col-md-6 mb-4">
+                <div class="card bg-black shadow">
+                    <div class="card-header bg-dark">
+                        <h4 class="text-warning mb-0">Today's Status</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="text-center mb-3">
+                            <span th:if="${employee.status == 'IN'}" class="badge bg-success status-badge">🟢 CLOCKED IN</span>
+                            <span th:if="${employee.status == 'OUT'}" class="badge bg-secondary status-badge">⚪ CLOCKED OUT</span>
+                        </div>
+                        <p><strong>Employee ID:</strong> <span th:text="${employee.employeeId}"></span></p>
+                        <p><strong>Department:</strong> <span th:text="${employee.department}"></span></p>
+                        <p th:if="${todayAttendance != null && todayAttendance.checkInTime != null}">
+                            <strong>Clock In:</strong> <span th:text="${#temporals.format(todayAttendance.checkInTime, 'HH:mm:ss')}"></span>
+                        </p>
+                        <!-- Display Clock-In Status -->
+                        <div th:if="${checkInStatusDisplay != null}" class="mt-3 p-3 bg-dark rounded border border-warning">
+                            <strong class="text-warning mb-2 d-block">Clock-In Status:</strong>
+                            <div class="mt-2">
+                                <!-- Late Clock In -->
+                                <span th:if="${checkInStatusDisplay == 'Late Clock In'}" class="badge bg-warning text-dark fs-5 p-3">
+                                    ⚠️ Late Clock In
+                                </span>
+                                <!-- Early Clock In -->
+                                <span th:if="${checkInStatusDisplay == 'Early Clock In'}" class="badge bg-info fs-5 p-3">
+                                    ✅ Early Clock In
+                                </span>
+                                <!-- On Time Clock In -->
+                                <span th:if="${checkInStatusDisplay == 'On Time Clock In'}" class="badge bg-success fs-5 p-3">
+                                    ✅ On Time Clock In
+                                </span>
+                            </div>
+                            <p class="text-muted mt-2 mb-0" th:if="${todayAttendance != null && todayAttendance.checkInTime != null}">
+                                <small>
+                                    Clocked in at: <span th:text="${#temporals.format(todayAttendance.checkInTime, 'HH:mm:ss')}"></span>
+                                    <span th:if="${employee.scheduledStartTime != null}">
+                                        | Scheduled: <span th:text="${employee.scheduledStartTime}"></span>
+                                    </span>
+                                </small>
+                            </p>
+                        </div>
+                        
+                        <!-- Display Clock-Out Status -->
+                        <div th:if="${checkOutStatusDisplay != null}" class="mt-3 p-3 bg-dark rounded border border-info">
+                            <strong class="text-info mb-2 d-block">Clock-Out Status:</strong>
+                            <div class="mt-2">
+                                <!-- Late Clock Out -->
+                                <span th:if="${checkOutStatusDisplay == 'Late Clock Out'}" class="badge bg-warning text-dark fs-5 p-3">
+                                    ⚠️ Late Clock Out
+                                </span>
+                                <!-- Early Clock Out -->
+                                <span th:if="${checkOutStatusDisplay == 'Early Clock Out'}" class="badge bg-danger fs-5 p-3">
+                                    ⚠️ Early Clock Out
+                                </span>
+                                <!-- On Time Clock Out -->
+                                <span th:if="${checkOutStatusDisplay == 'On Time Clock Out'}" class="badge bg-success fs-5 p-3">
+                                    ✅ On Time Clock Out
+                                </span>
+                            </div>
+                            <p class="text-muted mt-2 mb-0" th:if="${todayAttendance != null && todayAttendance.checkOutTime != null}">
+                                <small>
+                                    Clocked out at: <span th:text="${#temporals.format(todayAttendance.checkOutTime, 'HH:mm:ss')}"></span>
+                                    <span th:if="${employee.scheduledEndTime != null}">
+                                        | Scheduled: <span th:text="${employee.scheduledEndTime}"></span>
+                                    </span>
+                                </small>
+                            </p>
+                        </div>
+                        <p th:if="${todayAttendance != null && todayAttendance.totalHours != null}">
+                            <strong>Total Hours Today:</strong> 
+                            <span class="badge bg-info" th:text="${#numbers.formatDecimal(todayAttendance.totalHours, 1, 1)} + ' hours'"></span>
+                        </p>
+                        <p th:if="${todayAttendance == null}">
+                            <strong>Status:</strong> <span class="text-secondary">Not clocked in today</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Clock In/Out Actions -->
+            <div class="col-md-6 mb-4">
+                <div class="card bg-black shadow">
+                    <div class="card-header bg-dark">
+                        <h4 class="text-warning mb-0">Clock In/Out</h4>
+                    </div>
+                    <div class="card-body">
+                        <div th:if="${employee.scheduledStartTime != null}" class="mb-3 p-2 bg-dark rounded">
+                            <small class="text-secondary">Scheduled Shift:</small><br>
+                            <span class="text-info" th:text="${employee.scheduledStartTime} + ' - ' + ${employee.scheduledEndTime}"></span>
+                        </div>
+                        <div th:if="${employee.status == 'OUT'}">
+                            <!-- Face Recognition Status -->
+                            <div th:if="${employee.faceImage != null && !employee.faceImage.isEmpty()}" 
+                                 class="alert alert-info mb-3">
+                                <strong>✓ Face Registered</strong><br>
+                                <small>Your face is registered. You can clock in using face recognition.</small>
+                            </div>
+                            <div th:if="${employee.faceImage == null || employee.faceImage.isEmpty()}" 
+                                 class="alert alert-warning mb-3">
+                                <strong>⚠ Face Not Registered</strong><br>
+                                <small>Please <a href="/employee/face-capture" class="alert-link">register your face</a> first to use face recognition for clock-in.</small>
+                            </div>
+                            
+                            <!-- Work Mode Selector -->
+                            <div class="mb-3">
+                                <label class="form-label text-warning"><strong>Select Work Mode:</strong></label>
+                                <div class="btn-group w-100" role="group">
+                                    <input type="radio" class="btn-check" name="workMode" id="office" value="OFFICE" 
+                                           th:checked="${employee.workMode == 'OFFICE' || employee.workMode == null}">
+                                    <label class="btn btn-outline-warning" for="office">🏢 Office</label>
+
+                                    <input type="radio" class="btn-check" name="workMode" id="wfh" value="WORK_FROM_HOME"
+                                           th:checked="${employee.workMode == 'WORK_FROM_HOME'}">
+                                    <label class="btn btn-outline-warning" for="wfh">🏠 WFH</label>
+
+                                    <input type="radio" class="btn-check" name="workMode" id="onsite" value="ON_SITE"
+                                           th:checked="${employee.workMode == 'ON_SITE'}">
+                                    <label class="btn btn-outline-warning" for="onsite">🚗 On-Site</label>
+                                </div>
+                            </div>
+                            
+                            <!-- Face Recognition Camera Section -->
+                            <div class="mb-3" th:if="${employee.faceImage != null && !employee.faceImage.isEmpty()}">
+                                <div id="checkinInstructions" class="text-center mb-2 p-2 bg-dark rounded">
+                                    <p class="text-info mb-1"><strong>📷 Face Recognition Required</strong></p>
+                                    <p class="text-secondary small mb-0">Click "Start Camera" to begin face recognition</p>
+                                </div>
+                                <video id="checkinVideo" width="100%" height="240" autoplay style="display:none; border-radius: 5px; border: 2px solid #ffc107;"></video>
+                                <canvas id="checkinCanvas" width="320" height="240" style="display:none;"></canvas>
+                                <div id="checkinPreview" class="text-center mb-2"></div>
+                                <div id="checkinStatus" class="text-center mb-2"></div>
+                            </div>
+                            
+                            <form id="clockInForm" th:if="${employee.faceImage != null && !employee.faceImage.isEmpty()}">
+                                <input type="hidden" name="workMode" id="workModeInput" value="OFFICE">
+                                <input type="hidden" id="checkinFaceImage" name="faceImage">
+                                <button type="button" class="btn btn-warning btn-lg w-100 mb-2" id="startCameraBtn" onclick="startFaceCheckIn()">
+                                    📷 Start Camera
+                                </button>
+                                <button type="button" class="btn btn-success btn-lg w-100 mb-2" id="captureFaceBtn" onclick="captureAndCheckIn()" style="display:none;">
+                                    📸 Capture & Clock In
+                                </button>
+                            </form>
+                            <p class="text-secondary text-center small" th:if="${employee.faceImage != null && !employee.faceImage.isEmpty()}">
+                                Make sure your face is clearly visible and well-lit
+                            </p>
+                        </div>
+                        <div th:if="${employee.status == 'IN'}">
+                            <div class="mb-3 p-2 bg-dark rounded">
+                                <small class="text-secondary">Current Work Mode:</small><br>
+                                <span class="badge bg-info" th:text="${employee.workMode}"></span>
+                            </div>
+                            <div class="mb-3">
+                                <video id="checkoutVideo" width="100%" height="240" autoplay style="display:none; border-radius: 5px;"></video>
+                                <canvas id="checkoutCanvas" width="320" height="240" style="display:none;"></canvas>
+                                <div id="checkoutPreview" class="text-center mb-2"></div>
+                            </div>
+                            <form id="clockOutForm">
+                                <input type="hidden" id="checkoutFaceImage" name="faceImage">
+                                <button type="button" class="btn btn-danger btn-lg w-100 mb-2" onclick="startFaceCheckOut()">
+                                    📷 Clock Out with Face
+                                </button>
+                            </form>
+                            <p class="text-secondary text-center small">Position your face in front of the camera</p>
+                            <p class="text-secondary text-center">
+                                Clocked in at: <span th:text="${employee.currentCheckIn != null ? #temporals.format(employee.currentCheckIn, 'HH:mm') : 'N/A'}"></span>
+                            </p>
+                            <p class="text-secondary text-center">
+                                Hours today: <span class="badge bg-info" th:text="${employee.totalHoursToday != null ? #numbers.formatDecimal(employee.totalHoursToday, 1, 1) + 'h' : '0h'}"></span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leave Requests Section -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card bg-black shadow">
+                    <div class="card-header bg-dark d-flex justify-content-between align-items-center">
+                        <h4 class="text-warning mb-0">📅 My Leave Requests</h4>
+                        <a href="/employee/leave/apply" class="btn btn-warning btn-sm">+ Apply for Leave</a>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <div class="card bg-dark">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-secondary">Pending</h6>
+                                        <h3 class="text-warning" th:text="${pendingLeaves != null ? pendingLeaves.size() : 0}">0</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-dark">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-secondary">Approved</h6>
+                                        <h3 class="text-success" th:text="${approvedLeaves != null ? approvedLeaves.size() : 0}">0</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-dark">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-secondary">Leave Balance</h6>
+                                        <h3 class="text-info" th:text="${leaveBalance != null ? leaveBalance : 0}">0</h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-dark table-hover table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Leave Type</th>
+                                        <th>Start Date</th>
+                                        <th>End Date</th>
+                                        <th>Days</th>
+                                        <th>Status</th>
+                                        <th>Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:if="${leaveRequests == null || leaveRequests.isEmpty()}">
+                                        <td colspan="6" class="text-center text-secondary">No leave requests found. <a href="/employee/leave/apply" class="text-warning">Apply for leave</a></td>
+                                    </tr>
+                                    <tr th:each="leave : ${leaveRequests}">
+                                        <td><span class="badge bg-info" th:text="${leave.leaveType}"></span></td>
+                                        <td th:text="${#temporals.format(leave.startDate, 'yyyy-MM-dd')}"></td>
+                                        <td th:text="${#temporals.format(leave.endDate, 'yyyy-MM-dd')}"></td>
+                                        <td th:text="${leave.numberOfDays}"></td>
+                                        <td>
+                                            <span class="badge" th:classappend="${leave.status == 'APPROVED' ? 'bg-success' : (leave.status == 'REJECTED' ? 'bg-danger' : 'bg-warning')}" th:text="${leave.status}"></span>
+                                        </td>
+                                        <td th:text="${leave.reason != null ? leave.reason : 'N/A'}"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Tracker Section -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card bg-black shadow">
+                    <div class="card-header bg-dark">
+                        <h4 class="text-warning mb-0">📊 Today's Activity Summary</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <h5 class="text-success" th:text="${productiveMinutes} + ' min'">0 min</h5>
+                                <small class="text-secondary">Productive</small>
+                            </div>
+                            <div class="col-6">
+                                <h5 class="text-warning" th:text="${nonProductiveMinutes} + ' min'">0 min</h5>
+                                <small class="text-secondary">Non-Productive</small>
+                            </div>
+                        </div>
+                        <div class="progress mt-3" style="height: 20px;">
+                            <div class="progress-bar bg-success" role="progressbar" 
+                                 th:style="'width: ' + ${productiveMinutes + nonProductiveMinutes > 0 ? (productiveMinutes * 100 / (productiveMinutes + nonProductiveMinutes)) : 0} + '%'"
+                                 th:text="${productiveMinutes + nonProductiveMinutes > 0 ? (productiveMinutes * 100 / (productiveMinutes + nonProductiveMinutes)) : 0} + '%'">0%</div>
+                            <div class="progress-bar bg-warning" role="progressbar" 
+                                 th:style="'width: ' + ${productiveMinutes + nonProductiveMinutes > 0 ? (nonProductiveMinutes * 100 / (productiveMinutes + nonProductiveMinutes)) : 0} + '%'"
+                                 th:text="${productiveMinutes + nonProductiveMinutes > 0 ? (nonProductiveMinutes * 100 / (productiveMinutes + nonProductiveMinutes)) : 0} + '%'">0%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card bg-black shadow">
+                    <div class="card-header bg-dark">
+                        <h4 class="text-warning mb-0">💡 Submit Your Suggestion</h4>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-light">Share your ideas, feedback, or suggestions with HR and Management.</p>
+                        <div class="d-flex gap-2">
+                            <a href="/employee/suggestion/submit" class="btn btn-outline-warning">Submit Suggestion</a>
+                            <a href="/employee/suggestion/my-suggestions" class="btn btn-outline-info">View My Suggestions</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activities Log -->
+        <div class="card bg-black shadow mb-4">
+            <div class="card-header bg-dark">
+                <h4 class="text-warning mb-0">📝 Recent Activities</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-dark table-sm">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Activity Type</th>
+                                <th>Description</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:if="${recentActivities == null || recentActivities.isEmpty()}">
+                                <td colspan="4" class="text-center text-secondary">No activities logged yet</td>
+                            </tr>
+                            <tr th:each="activity : ${recentActivities}">
+                                <td th:text="${#temporals.format(activity.startedAt, 'HH:mm:ss')}">Time</td>
+                                <td>
+                                    <span class="badge" 
+                                          th:classappend="${activity.activityType == 'WORKING' ? 'bg-success' : (activity.activityType == 'GAMING' ? 'bg-danger' : (activity.activityType == 'BROWSING' ? 'bg-info' : 'bg-warning'))}"
+                                          th:text="${activity.activityType}">Type</span>
+                                </td>
+                                <td>
+                                    <span th:text="${activity.activityDescription}">Description</span>
+                                    <small class="text-muted d-block" th:if="${activity.applicationName != null}" th:text="${activity.applicationName}">App</small>
+                                </td>
+                                <td>
+                                    <span class="badge" 
+                                          th:classappend="${activity.isProductive ? 'bg-success' : 'bg-danger'}"
+                                          th:text="${activity.isProductive ? 'Productive' : 'Non-Productive'}">Status</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Attendance History -->
+        <div class="card bg-black shadow">
+            <div class="card-header bg-dark">
+                <h4 class="text-warning mb-0">Recent Attendance History</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Clock In</th>
+                                <th>Clock Out</th>
+                                <th>Work Mode</th>
+                                <th>Total Hours</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:if="${attendanceHistory.isEmpty()}">
+                                <td colspan="6" class="text-center text-secondary">No attendance records found</td>
+                            </tr>
+                            <tr th:each="att : ${attendanceHistory}" th:if="${attendanceHistory.size() <= 10}">
+                                <td th:text="${#temporals.format(att.attendanceDate, 'yyyy-MM-dd')}"></td>
+                                <td th:text="${att.checkInTime != null ? #temporals.format(att.checkInTime, 'HH:mm') : 'N/A'}"></td>
+                                <td th:text="${att.checkOutTime != null ? #temporals.format(att.checkOutTime, 'HH:mm') : 'N/A'}"></td>
+                                <td>
+                                    <span class="badge bg-secondary" th:text="${att.workMode != null ? att.workMode : 'N/A'}"></span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info" th:text="${att.totalHours != null ? #numbers.formatDecimal(att.totalHours, 1, 1) + 'h' : '0h'}"></span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-success" th:text="${att.status}"></span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-center mt-3">
+                    <a href="/employee/attendance/history" class="btn btn-outline-warning">View Full History</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let checkInStream = null;
+        let checkOutStream = null;
+
+        // Update work mode input when radio button changes
+        document.querySelectorAll('input[name="workMode"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const workModeInput = document.getElementById('workModeInput');
+                if (workModeInput) {
+                    workModeInput.value = this.value;
+                }
+            });
+        });
+
+        function startFaceCheckIn() {
+            const video = document.getElementById('checkinVideo');
+            const canvas = document.getElementById('checkinCanvas');
+            const preview = document.getElementById('checkinPreview');
+            const statusDiv = document.getElementById('checkinStatus');
+            const instructions = document.getElementById('checkinInstructions');
+            const startBtn = document.getElementById('startCameraBtn');
+            const captureBtn = document.getElementById('captureFaceBtn');
+            const faceInput = document.getElementById('checkinFaceImage');
+
+            navigator.mediaDevices.getUserMedia({ 
+                video: { width: 640, height: 480, facingMode: 'user' } 
+            }).then(stream => {
+                checkInStream = stream;
+                video.srcObject = stream;
+                video.style.display = 'block';
+                
+                if (instructions) instructions.style.display = 'none';
+                if (startBtn) startBtn.style.display = 'none';
+                if (captureBtn) captureBtn.style.display = 'block';
+                if (statusDiv) {
+                    statusDiv.innerHTML = '<div class="alert alert-info"><strong>Camera Active</strong><br>Position your face in the frame and click "Capture & Clock In"</div>';
+                }
+            }).catch(err => {
+                alert('Error accessing camera: ' + err.message);
+                console.error('Camera error:', err);
+            });
+        }
+
+        function captureAndCheckIn() {
+            const video = document.getElementById('checkinVideo');
+            const canvas = document.getElementById('checkinCanvas');
+            const preview = document.getElementById('checkinPreview');
+            const statusDiv = document.getElementById('checkinStatus');
+            const faceInput = document.getElementById('checkinFaceImage');
+            const workMode = document.getElementById('workModeInput').value;
+            const captureBtn = document.getElementById('captureFaceBtn');
+
+            if (!checkInStream) {
+                alert('Please start the camera first');
+                return;
+            }
+
+            // Capture image
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, 640, 480);
+            const imageData = canvas.toDataURL('image/jpeg', 0.9);
+            faceInput.value = imageData;
+            
+            // Show preview
+            if (preview) {
+                preview.innerHTML = '<img src="' + imageData + '" class="img-thumbnail" style="max-width: 100%; border: 3px solid #28a745;">';
+            }
+            
+            // Stop camera
+            checkInStream.getTracks().forEach(track => track.stop());
+            checkInStream = null;
+            video.style.display = 'none';
+            if (captureBtn) captureBtn.style.display = 'none';
+            
+            // Show processing status
+            if (statusDiv) {
+                statusDiv.innerHTML = '<div class="alert alert-warning"><strong>Processing...</strong><br>Verifying face recognition...</div>';
+            }
+            
+            // Submit to server for face verification and clock-in
+            fetch('/employee/checkin-face', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `faceImage=${encodeURIComponent(imageData)}&workMode=${workMode}`
+            })
+            .then(response => {
+                // Check HTTP status code - 200 means success
+                if (response.ok) {
+                    return response.text().then(data => {
+                        // Success - clock-in completed (even if late/early)
+                        let statusClass = 'alert-success';
+                        let statusIcon = '✓';
+                        let statusText = 'Success!';
+                        
+                        // Determine message type based on content
+                        if (data.includes('Late clock in')) {
+                            statusClass = 'alert-warning';
+                            statusIcon = '⚠️';
+                            statusText = 'Clocked In (Late)';
+                        } else if (data.includes('Early clock in')) {
+                            statusClass = 'alert-info';
+                            statusIcon = '✅';
+                            statusText = 'Clocked In (Early)';
+                        } else if (data.includes('on time')) {
+                            statusClass = 'alert-success';
+                            statusIcon = '✅';
+                            statusText = 'Clocked In (On Time)';
+                        }
+                        
+                        if (statusDiv) {
+                            statusDiv.innerHTML = `<div class="alert ${statusClass}"><strong>${statusIcon} ${statusText}</strong><br>${data}</div>`;
+                        }
+                        setTimeout(() => {
+                            location.reload();
+                        }, 2000);
+                    });
+                } else {
+                    // Error response
+                    return response.text().then(data => {
+                        if (statusDiv) {
+                            statusDiv.innerHTML = '<div class="alert alert-danger"><strong>✗ Failed</strong><br>' + data + '</div>';
+                        } else {
+                            alert('Error: ' + data);
+                        }
+                        // Reset camera button
+                        const startBtn = document.getElementById('startCameraBtn');
+                        if (startBtn) startBtn.style.display = 'block';
+                        if (preview) preview.innerHTML = '';
+                    });
+                }
+            })
+            .catch(error => {
+                if (statusDiv) {
+                    statusDiv.innerHTML = '<div class="alert alert-danger"><strong>Error</strong><br>' + error + '</div>';
+                } else {
+                    alert('Error: ' + error);
+                }
+                const startBtn = document.getElementById('startCameraBtn');
+                if (startBtn) startBtn.style.display = 'block';
+            });
+        }
+
+        function startFaceCheckOut() {
+            const video = document.getElementById('checkoutVideo');
+            const canvas = document.getElementById('checkoutCanvas');
+            const faceInput = document.getElementById('checkoutFaceImage');
+
+            navigator.mediaDevices.getUserMedia({ 
+                video: { width: 640, height: 480, facingMode: 'user' } 
+            }).then(stream => {
+                checkOutStream = stream;
+                video.srcObject = stream;
+                video.style.display = 'block';
+                
+                setTimeout(() => {
+                    const context = canvas.getContext('2d');
+                    context.drawImage(video, 0, 0, 640, 480);
+                    const imageData = canvas.toDataURL('image/jpeg', 0.9);
+                    faceInput.value = imageData;
+                    
+                    // Stop camera
+                    stream.getTracks().forEach(track => track.stop());
+                    video.style.display = 'none';
+                    
+                    // Submit form
+                    fetch('/employee/checkout-face', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: `faceImage=${encodeURIComponent(imageData)}`
+                    })
+                    .then(response => {
+                        // Check HTTP status code - 200 means success
+                        if (response.ok) {
+                            return response.text().then(data => {
+                                // Success - clock-out completed
+                                location.reload();
+                            });
+                        } else {
+                            // Error response
+                            return response.text().then(data => {
+                                alert('Error: ' + data);
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        alert('Error: ' + error);
+                    });
+                }, 2000); // Wait 2 seconds for face positioning
+            }).catch(err => {
+                alert('Error accessing camera: ' + err.message);
+            });
+        }
+        
+        // Enhanced Activity Tracking Script - Track user activity with type detection
+        let activityTimeout;
+        let currentActivity = null;
+        let activityStartTime = null;
+        const ACTIVITY_INTERVAL = 30000; // Send activity every 30 seconds
+        const ACTIVITY_CHECK_INTERVAL = 10000; // Check for activity type every 10 seconds
+        
+        // Detect activity type based on page focus, URL, and user interaction
+        function detectActivityType() {
+            let activityType = 'WORKING';
+            let activityDescription = 'Working';
+            let applicationName = null;
+            let url = window.location.href;
+            let isProductive = true;
+            
+            // Check if window is focused
+            if (!document.hasFocus()) {
+                activityType = 'IDLE';
+                activityDescription = 'Away from computer';
+                isProductive = false;
+            } else {
+                // Check current URL for non-productive sites
+                const nonProductivePatterns = [
+                    { pattern: /youtube\.com|youtu\.be/i, type: 'VIDEO', desc: 'Watching videos', productive: false },
+                    { pattern: /facebook\.com|fb\.com/i, type: 'SOCIAL_MEDIA', desc: 'Social media', productive: false },
+                    { pattern: /twitter\.com|tweet/i, type: 'SOCIAL_MEDIA', desc: 'Social media', productive: false },
+                    { pattern: /instagram\.com/i, type: 'SOCIAL_MEDIA', desc: 'Social media', productive: false },
+                    { pattern: /tiktok\.com/i, type: 'VIDEO', desc: 'Watching videos', productive: false },
+                    { pattern: /reddit\.com/i, type: 'BROWSING', desc: 'Browsing Reddit', productive: false },
+                    { pattern: /game|play|gaming/i, type: 'GAMING', desc: 'Playing games', productive: false },
+                    { pattern: /netflix|hulu|prime video/i, type: 'VIDEO', desc: 'Streaming video', productive: false },
+                    { pattern: /spotify|music|soundcloud/i, type: 'BROWSING', desc: 'Listening to music', productive: true },
+                ];
+                
+                for (let pattern of nonProductivePatterns) {
+                    if (pattern.pattern.test(url) || pattern.pattern.test(document.title)) {
+                        activityType = pattern.type;
+                        activityDescription = pattern.desc;
+                        isProductive = pattern.productive;
+                        break;
+                    }
+                }
+                
+                // Check for gaming indicators (common game-related keywords in title)
+                if (document.title.toLowerCase().includes('game') || 
+                    document.title.toLowerCase().includes('play') ||
+                    url.toLowerCase().includes('game')) {
+                    activityType = 'GAMING';
+                    activityDescription = 'Playing games';
+                    isProductive = false;
+                }
+                
+                // Check for video streaming
+                if (url.includes('youtube') || url.includes('vimeo') || 
+                    document.title.toLowerCase().includes('video')) {
+                    activityType = 'VIDEO';
+                    activityDescription = 'Watching videos';
+                    isProductive = false;
+                }
+                
+                // Get application name from page title or URL
+                applicationName = document.title || new URL(url).hostname;
+            }
+            
+            return {
+                type: activityType,
+                description: activityDescription,
+                applicationName: applicationName,
+                url: url,
+                isProductive: isProductive
+            };
+        }
+        
+        function sendActivity(activityData = null) {
+            if (!activityData) {
+                activityData = detectActivityType();
+            }
+            
+            // Build query parameters
+            const params = new URLSearchParams();
+            params.append('activityType', activityData.type);
+            params.append('activityDescription', activityData.description);
+            if (activityData.applicationName) {
+                params.append('applicationName', activityData.applicationName);
+            }
+            if (activityData.url) {
+                params.append('url', activityData.url);
+            }
+            
+            fetch('/employee/activity?' + params.toString(), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    console.log('Activity tracked:', activityData.type);
+                } else {
+                    console.error('Failed to track activity');
+                }
+            })
+            .catch(error => {
+                console.error('Error tracking activity:', error);
+            });
+        }
+        
+        // Track various user activities
+        const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click', 'focus', 'blur'];
+        
+        activityEvents.forEach(event => {
+            document.addEventListener(event, () => {
+                // Clear existing timeout
+                clearTimeout(activityTimeout);
+                
+                // Detect activity type immediately on interaction
+                const activityData = detectActivityType();
+                
+                // Set new timeout to send activity after user stops interacting
+                activityTimeout = setTimeout(() => {
+                    sendActivity(activityData);
+                }, 5000); // Send activity 5 seconds after last interaction
+            }, { passive: true });
+        });
+        
+        // Periodically check and send activity type
+        setInterval(() => {
+            if (document.hasFocus()) {
+                const activityData = detectActivityType();
+                sendActivity(activityData);
+            }
+        }, ACTIVITY_CHECK_INTERVAL);
+        
+        // Also send activity periodically while user is active
+        setInterval(() => {
+            if (document.hasFocus()) {
+                const activityData = detectActivityType();
+                sendActivity(activityData);
+            }
+        }, ACTIVITY_INTERVAL);
+        
+        // Track page visibility changes
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                sendActivity({ type: 'IDLE', description: 'Tab hidden/away', isProductive: false });
+            } else {
+                sendActivity(detectActivityType());
+            }
+        });
+        
+        // Send initial activity when page loads
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                sendActivity(detectActivityType());
+            }, 2000); // Wait 2 seconds after page load
+        });
+        
+        // Fun feature: Show warning if non-productive activity detected
+        let warningShown = false;
+        setInterval(() => {
+            if (document.hasFocus()) {
+                const activityData = detectActivityType();
+                if (!activityData.isProductive && !warningShown) {
+                    const warningDiv = document.createElement('div');
+                    warningDiv.className = 'alert alert-warning alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
+                    warningDiv.style.zIndex = '9999';
+                    warningDiv.innerHTML = `
+                        <strong>⚠️ Activity Alert!</strong> You're currently ${activityData.description.toLowerCase()}. 
+                        This activity is being tracked.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    `;
+                    document.body.appendChild(warningDiv);
+                    warningShown = true;
+                    setTimeout(() => {
+                        if (warningDiv.parentNode) {
+                            warningDiv.remove();
+                        }
+                    }, 5000);
+                }
+            }
+        }, 30000); // Check every 30 seconds
+    </script>
+</body>
+</html>
+

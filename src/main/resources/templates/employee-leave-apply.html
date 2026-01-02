@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LogSphere - Apply for Leave</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <style>
+        .form-label {
+            color: #ffc107 !important;
+            font-weight: 600;
+            font-size: 15px;
+            margin-bottom: 8px;
+            display: block;
+        }
+        .field-label {
+            color: #ffc107;
+            font-weight: 600;
+        }
+        .field-value {
+            color: #ffffff;
+            font-weight: 400;
+        }
+        .form-control, .form-select {
+            color: #ffffff !important;
+            background-color: #000000 !important;
+            border: 1px solid #444444;
+        }
+        .form-control:focus, .form-select:focus {
+            color: #ffffff !important;
+            background-color: #000000 !important;
+            border-color: #ffc107;
+            box-shadow: 0 0 0 0.2rem rgba(255, 193, 7, 0.25);
+        }
+        .table td {
+            color: #ffffff !important;
+        }
+        .table th {
+            color: #ffc107 !important;
+        }
+    </style>
+</head>
+<body class="bg-dark text-light">
+    <nav class="navbar navbar-dark bg-black p-3">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1 text-warning">LogSphere</span>
+            <div>
+                <a href="/employee/dashboard" class="text-light text-decoration-none me-3">Dashboard</a>
+                <a href="/employee/logout" class="btn btn-outline-danger btn-sm">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-8 mx-auto">
+                <div class="card bg-black shadow">
+                    <div class="card-header bg-dark">
+                        <h3 class="text-warning mb-0">📅 Apply for Leave</h3>
+                    </div>
+                    <div class="card-body">
+                        <!-- Leave Balance Info -->
+                        <div class="alert alert-info mb-4">
+                            <strong>Leave Balance:</strong> <span th:text="${leaveBalance != null ? leaveBalance : 0}">0</span> days remaining
+                        </div>
+
+                        <!-- Success/Error Messages -->
+                        <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+                            <span th:text="${success}"></span>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <span th:text="${error}"></span>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+
+                        <form th:action="@{/employee/leave/apply}" method="post">
+                            <div class="mb-3">
+                                <label for="leaveType" class="form-label">Leave Type <span class="text-danger">*</span></label>
+                                <select class="form-select bg-dark text-light" id="leaveType" name="leaveType" required>
+                                    <option value="">Select Leave Type</option>
+                                    <option value="CASUAL">Casual Leave</option>
+                                    <option value="SICK">Sick Leave</option>
+                                    <option value="EARNED">Earned Leave</option>
+                                    <option value="EMERGENCY">Emergency Leave</option>
+                                    <option value="MATERNITY">Maternity Leave</option>
+                                    <option value="PATERNITY">Paternity Leave</option>
+                                </select>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="startDate" class="form-label">Start Date <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control bg-dark text-light" id="startDate" name="startDate" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="endDate" class="form-label">End Date <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control bg-dark text-light" id="endDate" name="endDate" required>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="reason" class="form-label">Reason <span class="text-secondary">(Optional)</span></label>
+                                <textarea class="form-control bg-dark text-light" id="reason" name="reason" rows="4" placeholder="Please provide a reason for your leave request..."></textarea>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-warning btn-lg">Submit Leave Request</button>
+                                <a href="/employee/dashboard" class="btn btn-secondary">Cancel</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Recent Leave Requests -->
+                <div class="card bg-black shadow mt-4">
+                    <div class="card-header bg-dark">
+                        <h5 class="text-warning mb-0">Recent Leave Requests</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-dark table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th>Start Date</th>
+                                        <th>End Date</th>
+                                        <th>Days</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:if="${leaveRequests.isEmpty()}">
+                                        <td colspan="5" class="text-center text-secondary">No leave requests yet</td>
+                                    </tr>
+                                    <tr th:each="leave : ${leaveRequests}">
+                                        <td><span class="badge bg-info" th:text="${leave.leaveType}"></span></td>
+                                        <td th:text="${#temporals.format(leave.startDate, 'yyyy-MM-dd')}"></td>
+                                        <td th:text="${#temporals.format(leave.endDate, 'yyyy-MM-dd')}"></td>
+                                        <td th:text="${leave.numberOfDays}"></td>
+                                        <td>
+                                            <span class="badge" th:classappend="${leave.status == 'APPROVED' ? 'bg-success' : (leave.status == 'REJECTED' ? 'bg-danger' : 'bg-warning')}" th:text="${leave.status}"></span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Set minimum date to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('startDate').setAttribute('min', today);
+        document.getElementById('endDate').setAttribute('min', today);
+
+        // Update end date minimum when start date changes
+        document.getElementById('startDate').addEventListener('change', function() {
+            document.getElementById('endDate').setAttribute('min', this.value);
+        });
+    </script>
+</body>
+</html>
+
